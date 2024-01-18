@@ -220,7 +220,12 @@ export class Subscriber extends Subscription {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             onRedirect: (response): Promise<void> => this.unsubscribe(),
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            onReject: (response): Promise<void> => this.unsubscribe()
+            onReject: (response): Promise<void> => {
+              this.subscriberRequest.lastfailurecode = response.message.statusCode;
+              this.logger.log(`Active status code: ${response.message.statusCode}`);
+              this.unsubscribe();
+              return Promise.resolve();
+            }
           };
         }
         break;
@@ -421,6 +426,7 @@ class SubscriberRequest {
   private subscription: SubscriptionDialog | undefined;
 
   private subscribed = false;
+  lastfailurecode: number | undefined;
 
   public constructor(
     private core: UserAgentCore,
@@ -529,6 +535,8 @@ class SubscriberRequest {
         // be sent.
         // https://tools.ietf.org/html/rfc6665#section-4.1.2.1
         onReject: (response) => {
+          this.lastfailurecode = response.message.statusCode;
+          this.logger.log(`Unsubscribe with rejected status code: ${response.message.statusCode}`);
           resolve({ failure: { response } });
         }
       });
